@@ -198,6 +198,30 @@ static void shadow_softsw_5f(bool is_write, uint_fast16_t address, uint_fast8_t 
 }
 
 
+
+uint16_t ptr = 0x400;
+
+void putlogchar(uint8_t c) {
+  main_memory[ptr] = c;
+  if (++ptr > 0x800) ptr = 0x400;
+}
+
+void putloghex(uint8_t c) {
+  putlogchar(c < 10 ? c + '0' : c - 10 + 'A');
+}
+
+void putlog(uint16_t addr, uint8_t data) {
+  ptr = 0x400;
+  putloghex((addr >> 12) & 0x0f);
+  putloghex((addr >> 8) & 0x0f);
+  putloghex((addr >> 4) & 0x0f);
+  putloghex(addr & 0x0f);
+  putlogchar(' ');
+  putloghex((data >> 4) & 0x0f);
+  putloghex(data & 0x0f);
+  putlogchar(' ');
+}
+
 void abus_init() {
     // Init states
     soft_switches = SOFTSW_TEXT_MODE;
@@ -278,6 +302,9 @@ static void shadow_memory(bool is_write, uint_fast16_t address, uint32_t value) 
         break;
 
     case 0x2000 >> 10 ... 0x3c00 >> 10:
+        //@@
+        //putlog(address, value);
+        //@@
         // hires page 1
         reset_detect_state = 0;
         if(!is_write)
