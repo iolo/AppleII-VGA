@@ -10,6 +10,9 @@
 #ifdef APPLE_MODEL_IIPLUS
 #include "videx_vterm.h"
 #endif
+//@@iolo
+#include "htextfont/htextfont.h"
+//@@
 
 
 // A block of flash is reserved for storing configuration persistently across power cycles
@@ -77,6 +80,13 @@ void config_load() {
 
     soft_force_alt_textcolor = IS_STORED_IN_CONFIG(cfg, force_alt_textcolor) ? cfg->force_alt_textcolor : false;
     soft_smooth_hires = IS_STORED_IN_CONFIG(cfg, smooth_hires) ? cfg->smooth_hires : false;
+
+    //@@iolo
+    // copy current fonts to ram from flash
+    set_asc_font(NULL);
+    set_han_font(NULL);
+    htext_mode = false;
+    //@@
 }
 
 
@@ -91,6 +101,12 @@ void config_load_defaults() {
 #endif
     soft_force_alt_textcolor = false;
     soft_smooth_hires = false;
+
+    //@@iolo
+    set_asc_font(NULL);
+    set_han_font(NULL);
+    htext_mode = false;
+    //@@
 }
 
 

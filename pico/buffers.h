@@ -36,6 +36,12 @@ extern volatile bool soft_smooth_hires;
 
 extern uint8_t character_rom[CHARACTER_ROM_SIZE];
 
+//@@iolo
+extern volatile bool vgatest_mode;
+extern volatile bool vtext_mode;
+extern volatile bool htext_mode;
+//@@
+
 extern uint8_t main_memory[24 * 1024];
 extern uint8_t aux_memory[24 * 1024];
 extern uint8_t *text_mainmem_page1;

@@ -42,7 +42,18 @@ void render_loop() {
             } else
 #endif
             {
-                render_text();
+                //render_text();
+                //@@iolo
+                if (vgatest_mode) {
+                  render_vga_testpattern();
+                } else if (vtext_mode) {
+                    render_vtext();
+                } else if (htext_mode) {
+                  render_htext();
+                } else {
+                  render_text();
+                }
+                //@@
             }
             break;
         }

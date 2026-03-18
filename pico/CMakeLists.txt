@@ -25,6 +25,7 @@ pico_generate_pio_header(applevga
     ${CMAKE_CURRENT_SOURCE_DIR}/abus.pio)
 
 file(GLOB TEXTFONT_SRC_FILES textfont/*.c)
+file(GLOB HTEXTFONT_SRC_FILES htextfont/*.c)
 target_sources(applevga PUBLIC
     main.c
     abus.c
@@ -38,6 +39,9 @@ target_sources(applevga PUBLIC
     render_testpat.c
     render_text.c
     ${TEXTFONT_SRC_FILES}
+    render_htext.c
+    render_vtext.c
+    ${HTEXTFONT_SRC_FILES}
     vga.c
     videx_vterm.c
 )
