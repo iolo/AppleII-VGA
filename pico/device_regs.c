@@ -87,6 +87,14 @@ void execute_device_command(uint_fast8_t cmd) {
         // load a standard alternate character ROM
         memcpy(character_rom, character_roms[cmd & 0xf], CHARACTER_ROM_SIZE);
         break;
+    //@@iolo
+    case 0xf0: vgatest_mode = true; break;
+    case 0xf1: vgatest_mode = false; break;
+    case 0xfc: vtext_mode = true; break;
+    case 0xfd: vtext_mode = false; break;
+    case 0xfe: htext_mode = true; break;
+    case 0xff: htext_mode = false; break;
+    //@@
     default:;
     }
 }

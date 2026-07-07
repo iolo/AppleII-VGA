@@ -15,7 +15,10 @@
 #define HSYNC_TIMING_VALUE (((PIXELS_PER_LINE) / 8) - 23)
 #define VSYNC_TIMING_VALUE ((LINES_PER_FRAME) - 4)
 
-#define NUM_SCANLINE_BUFFERS 8
+//#define NUM_SCANLINE_BUFFERS 8
+//@@iolo
+#define NUM_SCANLINE_BUFFERS 16
+//@@
 
 enum {
     VGA_HSYNC_SM = 0,
@@ -55,6 +58,8 @@ static void vga_hsync_setup(PIO pio, uint sm) {
 
     pio_sm_config c = vga_hsync_program_get_default_config(program_offset);
     sm_config_set_clkdiv(&c, CONFIG_SYSCLOCK * 8 / PIXEL_FREQ);  // 1/8 * PIXEL_FREQ
+    //@@iolo: overclock 252Mhz
+    //sm_config_set_clkdiv(&c, CONFIG_SYSCLOCK * 4 / PIXEL_FREQ);  // 1/8 * PIXEL_FREQ
 
     // Map the state machine's OUT pin group to the sync signal pin
     sm_config_set_out_pins(&c, CONFIG_PIN_HSYNC, 1);
@@ -75,6 +80,8 @@ static void vga_vsync_setup(PIO pio, uint sm) {
 
     pio_sm_config c = vga_vsync_program_get_default_config(program_offset);
     sm_config_set_clkdiv(&c, CONFIG_SYSCLOCK * 8 / PIXEL_FREQ);  // 1/8 * PIXEL_FREQ
+    //@@iolo: overclock 252Mhz
+    //sm_config_set_clkdiv(&c, CONFIG_SYSCLOCK * 4 / PIXEL_FREQ);  // 1/8 * PIXEL_FREQ
 
     // Map the state machine's OUT pin group to the sync signal pin
     sm_config_set_out_pins(&c, CONFIG_PIN_VSYNC, 1);
@@ -95,6 +102,8 @@ static void vga_data_setup(PIO pio, uint sm) {
 
     pio_sm_config c = vga_data_program_get_default_config(program_offset);
     sm_config_set_clkdiv(&c, CONFIG_SYSCLOCK / (2 * PIXEL_FREQ));  // 2 * PIXEL_FREQ
+    //@@iolo: overclock 252Mhz
+    //sm_config_set_clkdiv(&c, CONFIG_SYSCLOCK / (4 * PIXEL_FREQ));  // 2 * PIXEL_FREQ
 
     // Map the state machine's OUT pin group to the data pins
     sm_config_set_out_pins(&c, CONFIG_PIN_RGB_BASE, 9);

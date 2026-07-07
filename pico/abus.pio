@@ -11,6 +11,7 @@
 ;  * SET pins are mapped to the transceiver enable signals
 ;  * input shift left & autopush @ 26 bits
 ;  * run at about 125MHz (8ns/instruction)
+;@@iolo: overclock 252MHz (4ns/instruction)
 ;
 ; SET bits for tranceiver control:
 ;  0bxxx
@@ -26,12 +27,10 @@ next_bus_cycle:
     ; the current time is P0+42ns (P0 + 18ns (buffer + clock input delays) + 2 clocks (input synchronizers) + 1 instruction)
 
     in PINS, 8                          ; read AddrHi[7:0]
-;@@ set PINS, 0b101  [5]                ; enable AddrLo tranceiver and delay for transceiver propagation delay
-;@@iolo
-; is delay 5 not enough?
-; /OE->A latency(tPZH=tPZL) on 3.3V is 0.7..6.4ns
-;   B->A latency(tPLH=tPHL) on 3.3V is 0.3..4.5ns
-    set PINS, 0b101  [7]                ; enable AddrLo tranceiver and delay for transceiver propagation delay
+;@@   set PINS, 0b101  [5]                ; enable AddrLo tranceiver and delay for transceiver propagation delay
+;@@iolo: overclock 252Mhz
+;@@    set PINS, 0b101  [10]                ; enable AddrLo tranceiver and delay for transceiver propagation delay
+    set PINS, 0b101  [20]                ; enable AddrLo tranceiver and delay for transceiver propagation delay
 ;@@
     in PINS, 8                          ; read AddrLo[7:0]
 
@@ -40,7 +39,10 @@ next_bus_cycle:
 write_cycle:
     ; the current time is P0+114ns (P0 + 18ns (buffer + clock input delays) + 2 clocks (input synchronizers) + 10 instructions)
 
-    set PINS, 0b110  [15]               ; enable Data tranceiver & wait until both ~DEVSEL and the written data are valid (P0+200ns)
+;@@    set PINS, 0b110  [15]               ; enable Data tranceiver & wait until both ~DEVSEL and the written data are valid (P0+200ns)
+;@@iolo: overclock 252Mhz
+    set PINS, 0b110  [30]               ; enable Data tranceiver & wait until both ~DEVSEL and the written data are valid (P0+200ns)
+;@@
     in PINS, 10                         ; read R/W, ~DEVSEL, and Data[7:0], then autopush
     wait 0 GPIO, PHI0_GPIO  [7]         ; wait for PHI0 to fall
     jmp next_bus_cycle

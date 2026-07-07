@@ -19,6 +19,12 @@ volatile bool soft_smooth_hires;
 // The currently programmed character generator ROM for text mode
 uint8_t character_rom[256 * 8];
 
+//@@iolo
+volatile bool vgatest_mode;
+volatile bool vtext_mode;
+volatile bool htext_mode;
+//@@
+
 // The lower 24K of main and aux memory (on IIe) where the video memory resides
 uint8_t main_memory[24 * 1024];
 uint8_t aux_memory[24 * 1024];

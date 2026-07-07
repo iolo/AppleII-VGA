@@ -1,6 +1,7 @@
 #include "render.h"
 
 #include <pico/stdlib.h>
+#include <string.h>
 #include "buffers.h"
 #include "colors.h"
 #include "hires_dot_patterns.h"
@@ -71,7 +72,15 @@ void render_hires(bool mixed) {
 
     if(mixed) {
         for(uint line = 20; line < 24; line++) {
+          //@@render_text_line(line, false);
+          //-----------------------------------------------
+          //@@iolo
+          if (htext_mode) {
+            render_htext_line(line, false);
+          } else {
             render_text_line(line, false);
+          }
+          //-----------------------------------------------
         }
     } else {
         for(uint line = 160; line < 192; line++) {
@@ -82,6 +91,21 @@ void render_hires(bool mixed) {
 
 
 static void render_hires_line(uint line) {
+    //-----------------------------------------------------
+    //@@iolo
+    // every 8th hires line(16 vga line): 0, 8, 16, .. 184
+    if (htext_mode && ((line & 7) == 0)) {
+      const uint line_offset = htext_base_addr[line >> 3]; // 0..191 -> 0..23
+
+      const uint8_t *page_main = is_page2_display_enabled() ? text_mainmem_page2 : text_mainmem_page1;
+      const uint8_t *line_main = page_main + line_offset;
+
+      prepare_htext_line_buf(40, line_main, NULL);
+    }
+    uint32_t fgfg = mono_fg_color << 16 | mono_fg_color; // for pixel doubling
+    uint glyph_line = (line & 7) << 1; // 0..191 -> 0..14
+    //-----------------------------------------------------
+
     struct vga_scanline *sl = vga_prepare_scanline();
     uint sl_pos = 0;
 
@@ -171,20 +195,65 @@ static void render_hires_line(uint line) {
         }
     }
 
+    //-----------------------------------------------------
+    //@@iolo: within htext overlay mode,
+    // we can't use blank line(THEN_WAIT_HSYNC) or line doubling(repeat_count)
+    // so, generate another scanline
+    struct vga_scanline *sl2 = NULL;
+    if (htext_mode) {
+      sl2 = vga_prepare_scanline();
+      if (soft_scanline_emulation) {
+        // manual blank line
+        memset(sl2->data, 0, sl_pos * sizeof(uint32_t));
+      } else {
+        // manual line doubling
+        memcpy(sl2->data, sl->data, sl_pos * sizeof(uint32_t));
+      }
+      // overlay the first glyph line: 0, 2, 4, .. 14
+      render_htext40_line_buf_overlay((uint32_t*)(sl->data + 3), glyph_line, fgfg);
+    } else {
+    //-----------------------------------------------------
     if(soft_scanline_emulation) {
         // Just insert a blank scanline between each rendered scanline
         sl->data[sl_pos++] = THEN_WAIT_HSYNC;
     } else {
         sl->repeat_count = 1;
     }
+    //-----------------------------------------------------
+    }
+    //-----------------------------------------------------
     sl->length = sl_pos;
     vga_submit_scanline(sl);
+
+    //-----------------------------------------------------
+    //@@iolo
+    if (htext_mode) {
+      // overlay the second glyph line: 1, 3, 5, .. 15
+      render_htext40_line_buf_overlay((uint32_t*)(sl2->data + 3), glyph_line+1, fgfg);
+      sl2->length = sl_pos;
+      vga_submit_scanline(sl2);
+    }
+    //-----------------------------------------------------
 }
 
 
 #ifdef APPLE_MODEL_IIE
 static void render_dhires_line(uint line) {
-    uint sl_pos = 0;
+    //-----------------------------------------------------
+    //@@iolo
+    // every 8th hires line(16 vga line): 0, 8, 16, .. 184
+    if (htext_mode && !(line & 8)) {
+      const uint line_offset = htext_base_addr[line >> 3]; // 0..191 -> 0..23
+
+      const uint8_t *page_main = is_page2_display_enabled() ? text_mainmem_page2 : text_mainmem_page1;
+      const uint8_t *line_main = page_main + line_offset;
+      const uint8_t *page_aux = is_page2_display_enabled() ? text_auxmem_page2 : text_auxmem_page1;
+      const uint8_t *line_aux = page_aux + line_offset;
+
+      prepare_htext_line_buf(80, line_main, line_aux);
+    }
+    uint glyph_line = (line & 7) << 1; // 0..191 -> 0..14
+    //-----------------------------------------------------
 
     // Don't support soft-monochrome mode for the 160x192 RGB mode. It could be done but it would
     // be a nonstandard extension of the Video-7 mode, which itself is rarely used.
@@ -196,6 +265,7 @@ static void render_dhires_line(uint line) {
     const uint8_t *line_aux = aux_page + hires_line_to_mem_offset(line);
 
     struct vga_scanline *sl = vga_prepare_scanline();
+    uint sl_pos = 0;
 
     if(mode == VIDEO7_MODE_560x192) {
         // 560x192 monochrome mode - Ref: Video-7 RGB-SL7 User's Manual section 7.6.1 and US Patent 4631692
@@ -381,6 +451,24 @@ static void render_dhires_line(uint line) {
             dots |= (line_main[i] & 0x7f) << dotc;
             dotc += 7;
 
+    //-----------------------------------------------------
+            //@@iolo: within htext overlay mode,
+            // we can't use EXTEND
+            // so, generate duplicated pixels manually
+            if (htext_mode) {
+              while(dotc >= 8) {
+                  uint32_t pixeldata = (ntsc90_palette[dots & 0xf]);
+                  dots >>= 4;
+                  pixeldata |= (ntsc90_palette[dots & 0xf]) << 16;
+                  dots >>= 4;
+                  sl->data[sl_pos++] = pixeldata;
+                  sl->data[sl_pos++] = pixeldata;
+                  sl->data[sl_pos++] = pixeldata;
+                  sl->data[sl_pos++] = pixeldata;
+                  dotc -= 8;
+              }
+            } else {
+    //-----------------------------------------------------
             // Convert each 4-bit sequence into the dhires colored pixel
             while(dotc >= 8) {
                 uint32_t pixeldata = (ntsc90_palette[dots & 0xf] | THEN_EXTEND_3);
@@ -390,17 +478,49 @@ static void render_dhires_line(uint line) {
                 sl->data[sl_pos++] = pixeldata;
                 dotc -= 8;
             }
+    //-----------------------------------------------------
+            }
+    //-----------------------------------------------------
         }
     }
 
+    //@@iolo: within htext overlay mode,
+    // we can't use blank line(THEN_WAIT_HSYNC) or line doubling(repeat_count)
+    // so, generate another scanline
+    struct vga_scanline *sl2 = NULL;
+    if (htext_mode) {
+      sl2 = vga_prepare_scanline();
+      if (soft_scanline_emulation) {
+        // manual blank line
+        memset(sl2->data, 0, sl_pos * sizeof(uint32_t));
+      } else {
+        // manual line doubling
+        memcpy(sl2->data, sl->data, sl_pos * sizeof(uint32_t));
+      }
+      // overlay the first glyph line: 0, 2, 4, .. 14
+      render_htext80_line_buf_overlay((uint16_t*)(sl->data + 3), glyph_line, mono_fg_color);
+    } else {
+    //-----------------------------------------------------
     if(soft_scanline_emulation) {
         // Just insert a blank scanline between each rendered scanline
         sl->data[sl_pos++] = THEN_WAIT_HSYNC;
     } else {
         sl->repeat_count = 1;
     }
+    //-----------------------------------------------------
+    }
+    //-----------------------------------------------------
     sl->length = sl_pos;
     vga_submit_scanline(sl);
+    //-----------------------------------------------------
+    //@@iolo
+    if (htext_mode) {
+      // overlay the second glyph line: 1, 3, 5, .. 15
+      render_htext80_line_buf_overlay((uint16_t*)(sl2->data + 3), glyph_line+1, mono_fg_color);
+      sl2->length = sl_pos;
+      vga_submit_scanline(sl2);
+    }
+    //-----------------------------------------------------
 }
 
 
